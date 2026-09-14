@@ -131,3 +131,22 @@ Le modèle officiel suivant est déjà inclus dans le dépôt :
   * `EXTRA_STICKER_PACK_AUTHORITY`
   * `EXTRA_STICKER_PACK_NAME`
 - Déclaration `<queries>` dans [AndroidManifest.xml](file:///root/Stickr/app/src/main/AndroidManifest.xml) pour la compatibilité Android 11+ (API 30+).
+
+---
+
+## 🖐️ Éditeur Graphique Tactile (`presentation:screens:editor`)
+
+### 1. `InteractiveCanvas` (Espace de Travail 60/120 FPS)
+- **Motif Damier de Transparence (Checkerboard)** : Rendu graphique ultra-rapide en arrière-plan permettant de visualiser instantanément les zones détourées transparentes.
+- **Accélération Matérielle GPU** : Les gestes multitouch de mise à l'échelle (pinch-to-zoom), rotation et translation s'exécutent via `Modifier.graphicsLayer` sur le `RenderNode` GPU, garantissant une fluidité maximale à 60/120 FPS sans recomposition du layout.
+
+### 2. `EditorToolbar` (Contrôles & Outils)
+- **Détourage IA MediaPipe** : Déclencheur avec indicateur de progression circulaire pour la segmentation automatique locale sans latence serveur.
+- **Curseur de Contour (Die-Cut)** : Slider d'ajustement dynamique de 0 à 32 pixels.
+- **Palette de Couleurs Rapide** : Puces de couleur (Blanc vinyle, Noir, Jaune vif, Cyan, Vert lime, Rouge néon, Violet).
+- **Historique Annuler / Rétablir (Undo/Redo)** : Gestion de pile pour restaurer ou réappliquer les réglages de bordure.
+- **Réinitialisation** : Bouton de réinitialisation instantanée du cadrage au centre.
+
+### 3. `StickerEditorViewModel` & Sélecteur sans Permissions
+- Intégration du sélecteur d'images moderne `ActivityResultContracts.PickVisualMedia()` (Android Photo Picker, zéro permission de stockage requise).
+- Enregistrement direct au standard strict WhatsApp WebP via `StickerExporter.prepareForWhatsApp()`.

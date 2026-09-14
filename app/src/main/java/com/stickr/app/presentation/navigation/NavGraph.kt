@@ -8,8 +8,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.stickr.app.presentation.screens.editor.EditorScreen
-import com.stickr.app.presentation.screens.editor.EditorViewModel
+import com.stickr.app.presentation.screens.editor.StickerEditorScreen
+import com.stickr.app.presentation.screens.editor.StickerEditorViewModel
 import com.stickr.app.presentation.screens.home.HomeScreen
 import com.stickr.app.presentation.screens.home.HomeViewModel
 import com.stickr.app.presentation.screens.packdetail.PackDetailScreen
@@ -52,9 +52,9 @@ fun StickrNavGraph(
                 }
             )
         ) { backStackEntry ->
-            val viewModel: EditorViewModel = hiltViewModel()
+            val viewModel: com.stickr.app.presentation.screens.editor.StickerEditorViewModel = hiltViewModel()
             val initialUri = backStackEntry.arguments?.getString("imageUri")
-            EditorScreen(
+            com.stickr.app.presentation.screens.editor.StickerEditorScreen(
                 viewModel = viewModel,
                 initialImageUri = initialUri,
                 onNavigateBack = { navController.popBackStack() }
