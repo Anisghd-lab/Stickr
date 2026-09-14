@@ -12,6 +12,9 @@ interface StickerDao {
     @Query("SELECT * FROM stickers WHERE pack_id = :packId ORDER BY `order` ASC, created_at ASC")
     fun getStickersForPack(packId: Long): Flow<List<StickerEntity>>
 
+    @Query("SELECT * FROM stickers WHERE pack_id = :packId ORDER BY `order` ASC, created_at ASC")
+    fun getStickersForPackSync(packId: Long): List<StickerEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSticker(sticker: StickerEntity): Long
 

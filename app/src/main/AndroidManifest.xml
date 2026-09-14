@@ -8,6 +8,17 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
+    <!-- Permission WhatsApp Stickers -->
+    <permission
+        android:name="com.whatsapp.sticker.READ"
+        android:protectionLevel="normal" />
+
+    <!-- Package Visibility (Android 11+ / API 30+) pour interroger WhatsApp et WhatsApp Business -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+    </queries>
+
     <application
         android:name=".StickrApp"
         android:allowBackup="true"
@@ -29,6 +40,7 @@
             </intent-filter>
         </activity>
 
+        <!-- Provider pour le partage de fichiers génériques (cache / stockage) -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
@@ -38,6 +50,13 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- ContentProvider officiel pour l'exportation et le streaming vers WhatsApp -->
+        <provider
+            android:name=".core.provider.StickerContentProvider"
+            android:authorities="${applicationId}.stickercontentprovider"
+            android:exported="true"
+            android:readPermission="com.whatsapp.sticker.READ" />
 
     </application>
 

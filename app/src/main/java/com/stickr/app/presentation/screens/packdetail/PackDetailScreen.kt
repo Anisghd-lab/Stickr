@@ -59,8 +59,12 @@ fun PackDetailScreen(
     onNavigateToEditor: (Long) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val snackbarHostState = androidx.compose.runtime.remember { androidx.compose.material3.SnackbarHostState() }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(state.pack?.name ?: "Détails du pack") },
@@ -123,7 +127,31 @@ fun PackDetailScreen(
                         // Action Buttons: WhatsApp & Telegram export
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Button(
-                                onClick = { /* Export to WhatsApp */ },
+                                onClick = {
+                                    if (state.stickers.size < com.stickr.app.core.model.WhatsAppStickerValidator.MIN_STICKERS_PER_PACK) {
+                                        kotlinx.coroutines.launch {
+                                            snackbarHostState.showSnackbar("WhatsApp requiert au moins 3 stickers pour exporter (actuel: ${state.stickers.size})")
+                                        }
+                                    } else {
+                                        val packName = state.pack?.name ?: "Pack"
+                                        com.stickr.app.core.util.WhatsAppIntentHelper.launchAddToWhatsAppIntent(
+                                            context = context,
+                                            packId = packId.toString(),
+                                            packName = packName
+                                        ).fold(
+                                            onSuccess = {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("Ajout à WhatsApp lancé !")
+                                                }
+                                            },
+                                            onFailure = { error ->
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("Erreur : ${error.localizedMessage}")
+                                                }
+                                            }
+                                        )
+                                    }
+                                },
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary
@@ -131,7 +159,7 @@ fun PackDetailScreen(
                             ) {
                                 Icon(Icons.Default.Share, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("WhatsApp")
+                                Text("Exporter vers WhatsApp")
                             }
                         }
 

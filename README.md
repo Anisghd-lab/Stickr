@@ -102,3 +102,32 @@ com.stickr.app/
 
 Le modèle officiel suivant est déjà inclus dans le dépôt :
 - [app/src/main/assets/selfie_segmenter.tflite](file:///root/Stickr/app/src/main/assets/selfie_segmenter.tflite) (~249 Ko) : Optimisé pour les portraits et découpes d'autocollants instantanées.
+
+---
+
+## 🟢 Intégration Officielle WhatsApp Stickers (`core:provider` & `core:util`)
+
+### 1. `StickerContentProvider` (ContentProvider IPC)
+- Déclaré avec l'autorité dynamique `${applicationId}.stickercontentprovider`.
+- Expose les routes standardisées reconnues par le client officiel WhatsApp :
+  * `/metadata` : Liste de tous les packs disponibles (format Cursor).
+  * `/metadata/*` : Détails d'un pack spécifique.
+  * `/stickers/*` : Liste des stickers d'un pack et leurs émojis associés.
+  * `/stickers_asset/*/*` : Streaming binaire sécurisé du fichier WebP via `openFile`.
+  * `/tray_asset/*` : Streaming binaire de l'icône de plateau 96x96 px (générée à la volée si absente).
+- Protection robuste contre le path traversal (`canonicalPath` vérifié).
+
+### 2. `WhatsAppStickerValidator` (Validation Stricte)
+- Vérifie que chaque pack exporté respecte scrupuleusement les exigences de WhatsApp :
+  * **Nombre de stickers** : Entre 3 et 30 inclus.
+  * **Émojis** : Entre 1 et 3 émojis par sticker.
+  * **Icône de plateau** : Exactement 96x96 pixels et strictement inférieure à 50 Ko.
+  * **Stickers** : WebP 512x512 pixels et strictement inférieurs à 100 Ko.
+
+### 3. `WhatsAppIntentHelper` (Intent d'Ajout)
+- Méthodes `isWhatsAppInstalled` et `isAnyWhatsAppInstalled` pour détecter WhatsApp Consumer (`com.whatsapp`) et Business (`com.whatsapp.w4b`).
+- Lance l'action officielle `com.whatsapp.intent.action.ENABLE_ADD_PACK` avec les extras :
+  * `EXTRA_STICKER_PACK_ID`
+  * `EXTRA_STICKER_PACK_AUTHORITY`
+  * `EXTRA_STICKER_PACK_NAME`
+- Déclaration `<queries>` dans [AndroidManifest.xml](file:///root/Stickr/app/src/main/AndroidManifest.xml) pour la compatibilité Android 11+ (API 30+).

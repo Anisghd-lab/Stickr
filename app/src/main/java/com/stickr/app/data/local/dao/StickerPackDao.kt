@@ -28,8 +28,20 @@ interface StickerPackDao {
     """)
     fun getAllPacksWithCount(): Flow<List<StickerPackWithCount>>
 
+    @Query("""
+        SELECT p.id, p.name, p.author, p.tray_image_uri, p.created_at, COUNT(s.id) as sticker_count 
+        FROM sticker_packs p 
+        LEFT JOIN stickers s ON p.id = s.pack_id 
+        GROUP BY p.id 
+        ORDER BY p.created_at DESC
+    """)
+    fun getPacksSync(): List<StickerPackWithCount>
+
     @Query("SELECT * FROM sticker_packs WHERE id = :id")
     fun getPackById(id: Long): Flow<StickerPackEntity?>
+
+    @Query("SELECT * FROM sticker_packs WHERE id = :id")
+    fun getPackByIdSync(id: Long): StickerPackEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPack(pack: StickerPackEntity): Long
