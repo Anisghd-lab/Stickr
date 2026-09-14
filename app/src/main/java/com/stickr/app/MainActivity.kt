@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.navigation.compose.rememberNavController
-import com.stickr.app.presentation.navigation.StickrNavGraph
+import com.stickr.app.presentation.navigation.AppNavigation
 import com.stickr.app.presentation.theme.StickrTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             StickrTheme {
                 val navController = rememberNavController()
-                StickrNavGraph(navController = navController)
+                AppNavigation(navController = navController)
             }
         }
     }

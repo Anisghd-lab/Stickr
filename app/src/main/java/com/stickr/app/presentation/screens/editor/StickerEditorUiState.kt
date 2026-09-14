@@ -33,7 +33,7 @@ data class BorderConfig(
  * @param errorMessage Message d'erreur éventuel à présenter à l'utilisateur.
  */
 data class StickerEditorUiState(
-    val packId: Long = 0,
+    val packId: String = "",
     val originalBitmap: Bitmap? = null,
     val cutoutBitmap: Bitmap? = null,
     val renderedBitmap: Bitmap? = null,

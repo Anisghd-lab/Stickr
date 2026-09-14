@@ -2,9 +2,8 @@ package com.stickr.app.di
 
 import android.content.Context
 import androidx.room.Room
-import com.stickr.app.data.local.AppDatabase
-import com.stickr.app.data.local.dao.StickerDao
-import com.stickr.app.data.local.dao.StickerPackDao
+import com.stickr.app.core.database.StickrDatabase
+import com.stickr.app.core.database.dao.StickerPackDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,23 +17,18 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideDatabase(
+    fun provideStickrDatabase(
         @ApplicationContext context: Context
-    ): AppDatabase {
+    ): StickrDatabase {
         return Room.databaseBuilder(
             context,
-            AppDatabase::class.java,
-            AppDatabase.DATABASE_NAME
+            StickrDatabase::class.java,
+            StickrDatabase.DATABASE_NAME
         ).fallbackToDestructiveMigration().build()
     }
 
     @Provides
-    fun provideStickerPackDao(database: AppDatabase): StickerPackDao {
+    fun provideStickerPackDao(database: StickrDatabase): StickerPackDao {
         return database.stickerPackDao()
-    }
-
-    @Provides
-    fun provideStickerDao(database: AppDatabase): StickerDao {
-        return database.stickerDao()
     }
 }

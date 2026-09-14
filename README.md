@@ -150,3 +150,41 @@ Le modèle officiel suivant est déjà inclus dans le dépôt :
 ### 3. `StickerEditorViewModel` & Sélecteur sans Permissions
 - Intégration du sélecteur d'images moderne `ActivityResultContracts.PickVisualMedia()` (Android Photo Picker, zéro permission de stockage requise).
 - Enregistrement direct au standard strict WhatsApp WebP via `StickerExporter.prepareForWhatsApp()`.
+
+---
+
+## 🗄️ Persistance Room & Gestion des Packs (`feature:pack-management`)
+
+### 1. Base de données Room (`core:database`)
+- **`StickrDatabase`** : Configuration Room avec entités `StickerPackEntity` et `StickerItemEntity`.
+- **Identifiants UUID** : Clés primaires `String` universelles s'alignant sur les identifiants requis par le protocole WhatsApp.
+- **Suppression en Cascade** : Clé étrangère reliant chaque sticker à son pack (`ForeignKey.CASCADE`).
+- **Relation 1-à-N `StickerPackWithStickers`** : Regroupement réactif du pack et de ses stickers associés.
+- **`StickerPackDao`** :
+  * Requêtes réactives `Flow<List<StickerPackWithStickers>>` pour l'interface Compose.
+  * Requêtes synchrones pour le `StickerContentProvider` (WhatsApp IPC).
+  * Réordonnancement et modification des émojis.
+
+### 2. Dépôt & Nettoyage Disque (`StickerPackRepository`)
+- **Gestion stricte des fichiers** : Suppression physique immédiate des fichiers `.webp` et des icônes de plateau `.png` sur le stockage interne de l'application (`filesDir`) lors de la suppression d'un sticker ou d'un pack (aucun fichier orphelin).
+- **Génération automatique de Tray Icon** : Génère à la volée l'icône 96x96 px PNG requise par WhatsApp à partir du premier sticker du pack via `TrayIconHelper`.
+
+### 3. Dashboard (`feature.dashboard`)
+- **`DashboardScreen` & `DashboardViewModel`** :
+  * Affichage réactif de la liste des packs créés avec miniature ou mosaïque.
+  * Badges d'état dynamiques :
+    - 🟢 Vert : *"Prêt pour WhatsApp"* si $\ge 3$ stickers.
+    - 🟠 Orange : *"Ajoutez encore X sticker(s)"* si $< 3$ stickers.
+  * Bouton d'action directe *"Ajouter à WhatsApp"* sur la carte de pack.
+  * Dialogue de création de pack avec saisie du nom et de l'auteur.
+
+### 4. Détail du Pack (`feature.packdetail`)
+- **`PackDetailScreen` & `PackDetailViewModel`** :
+  * En-tête avec métadonnées éditables et prévisualisation de l'icône de plateau.
+  * Grille des stickers avec suppression rapide et dialogue d'association d'émojis (1 à 3 émojis max pour WhatsApp).
+  * Bouton (+) ouvrant l'éditeur tactile `StickerEditorScreen`.
+  * Bouton fixe d'exportation officielle vers WhatsApp en pied d'écran.
+
+### 5. Navigation Unifiée (`AppNavigation`)
+- Relie de manière fluide et réactive `Dashboard -> PackDetail -> StickerEditor`.
+- Le rafraîchissement est automatique et instantané grâce aux `Flow` de Room lors du retour de l'éditeur vers le détail du pack.

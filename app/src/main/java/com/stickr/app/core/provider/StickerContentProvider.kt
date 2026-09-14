@@ -12,8 +12,8 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import com.stickr.app.core.database.StickrDatabase
 import com.stickr.app.core.image.TrayIconHelper
-import com.stickr.app.data.local.AppDatabase
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
@@ -68,18 +68,18 @@ class StickerContentProvider : ContentProvider() {
     ): Cursor? {
         val match = uriMatcher.match(uri)
         val ctx = context ?: return null
-        val database = AppDatabase.getInstance(ctx)
+        val database = StickrDatabase.getInstance(ctx)
 
         return when (match) {
             CODE_METADATA -> {
                 queryAllPacks(database)
             }
             CODE_METADATA_PACK -> {
-                val packId = uri.lastPathSegment?.toLongOrNull() ?: return null
+                val packId = uri.lastPathSegment ?: return null
                 querySinglePack(database, packId)
             }
             CODE_STICKERS -> {
-                val packId = uri.lastPathSegment?.toLongOrNull() ?: return null
+                val packId = uri.lastPathSegment ?: return null
                 queryStickersForPack(database, packId)
             }
             else -> {
@@ -89,42 +89,42 @@ class StickerContentProvider : ContentProvider() {
         }
     }
 
-    private fun queryAllPacks(database: AppDatabase): Cursor {
+    private fun queryAllPacks(database: StickrDatabase): Cursor {
         val cursor = MatrixCursor(STICKER_PACK_COLUMNS)
-        val packs = database.stickerPackDao().getPacksSync()
+        val packs = database.stickerPackDao().getAllPacksWithStickersSync()
 
-        for (pack in packs) {
+        for (item in packs) {
             cursor.addRow(
                 arrayOf(
-                    pack.id.toString(),                         // sticker_pack_identifier
-                    pack.name,                                  // sticker_pack_name
-                    pack.author,                                // sticker_pack_publisher
-                    getTrayIconFileName(pack.id),               // sticker_pack_icon
-                    "",                                         // android_play_store_link
-                    "",                                         // ios_app_store_link
-                    "",                                         // publisher_email
-                    "",                                         // publisher_website
-                    "",                                         // privacy_policy_website
-                    "",                                         // license_agreement_website
-                    "1",                                        // image_data_version
-                    0,                                          // avoid_cache
-                    0                                           // animated_sticker_pack
+                    item.pack.id,                                   // sticker_pack_identifier
+                    item.pack.name,                                 // sticker_pack_name
+                    item.pack.publisher,                            // sticker_pack_publisher
+                    getTrayIconFileName(item.pack.id),              // sticker_pack_icon
+                    "",                                             // android_play_store_link
+                    "",                                             // ios_app_store_link
+                    "",                                             // publisher_email
+                    "",                                             // publisher_website
+                    "",                                             // privacy_policy_website
+                    "",                                             // license_agreement_website
+                    "1",                                            // image_data_version
+                    0,                                              // avoid_cache
+                    0                                               // animated_sticker_pack
                 )
             )
         }
         return cursor
     }
 
-    private fun querySinglePack(database: AppDatabase, packId: Long): Cursor {
+    private fun querySinglePack(database: StickrDatabase, packId: String): Cursor {
         val cursor = MatrixCursor(STICKER_PACK_COLUMNS)
-        val pack = database.stickerPackDao().getPackByIdSync(packId) ?: return cursor
+        val item = database.stickerPackDao().getPackWithStickersByIdSync(packId) ?: return cursor
 
         cursor.addRow(
             arrayOf(
-                pack.id.toString(),
-                pack.name,
-                pack.author,
-                getTrayIconFileName(pack.id),
+                item.pack.id,
+                item.pack.name,
+                item.pack.publisher,
+                getTrayIconFileName(item.pack.id),
                 "",
                 "",
                 "",
@@ -139,12 +139,12 @@ class StickerContentProvider : ContentProvider() {
         return cursor
     }
 
-    private fun queryStickersForPack(database: AppDatabase, packId: Long): Cursor {
+    private fun queryStickersForPack(database: StickrDatabase, packId: String): Cursor {
         val cursor = MatrixCursor(STICKER_COLUMNS)
-        val stickers = database.stickerDao().getStickersForPackSync(packId)
+        val stickers = database.stickerPackDao().getStickersForPackSync(packId)
 
         for (sticker in stickers) {
-            val file = File(sticker.imageUri)
+            val file = File(sticker.imagePath)
             val fileName = file.name
             val emojis = if (sticker.emojis.isNotBlank()) sticker.emojis else "✨"
 
@@ -198,8 +198,7 @@ class StickerContentProvider : ContentProvider() {
                 // Format attendu: /tray_asset/{packId} ou /tray_asset/{packId}/{fileName}
                 val segments = uri.pathSegments
                 if (segments.size < 2) throw FileNotFoundException("URI de tray icon invalide : $uri")
-                val packId = segments[1].toLongOrNull()
-                    ?: throw FileNotFoundException("packId invalide pour tray_asset : ${segments[1]}")
+                val packId = segments[1]
 
                 val trayFile = getOrCreateTrayIconFile(ctx, packId)
                 ParcelFileDescriptor.open(trayFile, ParcelFileDescriptor.MODE_READ_ONLY)
@@ -215,7 +214,7 @@ class StickerContentProvider : ContentProvider() {
         return AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH)
     }
 
-    private fun getOrCreateTrayIconFile(context: Context, packId: Long): File {
+    private fun getOrCreateTrayIconFile(context: Context, packId: String): File {
         val trayDir = File(context.filesDir, "tray")
         if (!trayDir.exists()) trayDir.mkdirs()
 
@@ -224,21 +223,24 @@ class StickerContentProvider : ContentProvider() {
             return trayFile
         }
 
-        // Si le fichier n'existe pas encore, on le génère depuis le premier sticker du pack ou trayImageUri
-        val db = AppDatabase.getInstance(context)
-        val pack = db.stickerPackDao().getPackByIdSync(packId)
-        val stickers = db.stickerDao().getStickersForPackSync(packId)
+        // Si le fichier n'existe pas encore, on le génère depuis le premier sticker du pack ou trayImagePath
+        val db = StickrDatabase.getInstance(context)
+        val packWithStickers = db.stickerPackDao().getPackWithStickersByIdSync(packId)
 
-        val sourceUri = when {
-            pack != null && pack.trayImageUri.isNotBlank() && File(pack.trayImageUri).exists() -> pack.trayImageUri
-            stickers.isNotEmpty() && File(stickers[0].imageUri).exists() -> stickers[0].imageUri
+        val sourcePath = when {
+            packWithStickers != null && !packWithStickers.pack.trayImagePath.isNullOrBlank() && File(packWithStickers.pack.trayImagePath).exists() -> {
+                packWithStickers.pack.trayImagePath
+            }
+            packWithStickers != null && packWithStickers.stickers.isNotEmpty() && File(packWithStickers.stickers[0].imagePath).exists() -> {
+                packWithStickers.stickers[0].imagePath
+            }
             else -> null
         }
 
-        val bitmap = if (sourceUri != null) {
-            BitmapFactory.decodeFile(sourceUri)
+        val bitmap = if (sourcePath != null) {
+            BitmapFactory.decodeFile(sourcePath)
         } else {
-            // Créer une icône de plateau 96x96 par défaut avec une couleur unie
+            // Créer une icône de plateau 96x96 par défaut avec un fond transparent
             android.graphics.Bitmap.createBitmap(
                 TrayIconHelper.TRAY_SIZE,
                 TrayIconHelper.TRAY_SIZE,
@@ -252,7 +254,7 @@ class StickerContentProvider : ContentProvider() {
         return trayFile
     }
 
-    private fun getTrayIconFileName(packId: Long): String = "tray_${packId}.png"
+    private fun getTrayIconFileName(packId: String): String = "tray_${packId}.png"
 
     override fun insert(uri: Uri, values: ContentValues?): Uri? = null
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int = 0

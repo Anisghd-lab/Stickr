@@ -1,9 +1,9 @@
 package com.stickr.app.di
 
+import com.stickr.app.core.data.repository.StickerPackRepository
+import com.stickr.app.core.data.repository.StickerPackRepositoryImpl
 import com.stickr.app.data.repository.ImageSegmentationRepositoryImpl
-import com.stickr.app.data.repository.StickerRepositoryImpl
 import com.stickr.app.domain.repository.ImageSegmentationRepository
-import com.stickr.app.domain.repository.StickerRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -16,9 +16,9 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindStickerRepository(
-        impl: StickerRepositoryImpl
-    ): StickerRepository
+    abstract fun bindStickerPackRepository(
+        impl: StickerPackRepositoryImpl
+    ): StickerPackRepository
 
     @Binds
     @Singleton

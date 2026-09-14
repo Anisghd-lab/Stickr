@@ -5,7 +5,7 @@ import android.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
-import com.stickr.app.domain.usecase.SaveStickerUseCase
+import com.stickr.app.core.data.repository.StickerPackRepository
 import com.stickr.app.domain.usecase.SegmentImageUseCase
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
@@ -24,17 +24,17 @@ class StickerEditorViewModelTest {
 
     private lateinit var context: Context
     private val segmentImageUseCase: SegmentImageUseCase = mockk(relaxed = true)
-    private val saveStickerUseCase: SaveStickerUseCase = mockk(relaxed = true)
+    private val repository: StickerPackRepository = mockk(relaxed = true)
     private lateinit var viewModel: StickerEditorViewModel
 
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
-        val savedStateHandle = SavedStateHandle(mapOf("packId" to 101L))
+        val savedStateHandle = SavedStateHandle(mapOf("packId" to "pack_101"))
         viewModel = StickerEditorViewModel(
             context = context,
             segmentImageUseCase = segmentImageUseCase,
-            saveStickerUseCase = saveStickerUseCase,
+            repository = repository,
             savedStateHandle = savedStateHandle
         )
     }
@@ -43,7 +43,7 @@ class StickerEditorViewModelTest {
     fun `initial state contains valid defaults and correct packId`() {
         val state = viewModel.uiState.value
 
-        assertEquals(101L, state.packId)
+        assertEquals("pack_101", state.packId)
         assertFalse(state.hasImage)
         assertFalse(state.isCutout)
         assertFalse(state.isSegmenting)

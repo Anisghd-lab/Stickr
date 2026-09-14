@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.stickr.app.core.data.repository.StickerPackRepository
 import java.io.File
 import java.io.FileOutputStream
 import java.util.ArrayDeque
@@ -34,11 +35,11 @@ import javax.inject.Inject
 class StickerEditorViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val segmentImageUseCase: SegmentImageUseCase,
-    private val saveStickerUseCase: SaveStickerUseCase,
+    private val repository: StickerPackRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val packId: Long = savedStateHandle.get<Long>("packId") ?: 0L
+    private val packId: String = savedStateHandle.get<String>("packId") ?: ""
 
     private val _uiState = MutableStateFlow(StickerEditorUiState(packId = packId))
     val uiState: StateFlow<StickerEditorUiState> = _uiState.asStateFlow()
@@ -324,10 +325,10 @@ class StickerEditorViewModel @Inject constructor(
                     }
                 }
 
-                saveStickerUseCase(
+                repository.addStickerToPack(
                     packId = _uiState.value.packId,
-                    imageUri = filePath,
-                    emojis = listOf("✨")
+                    imagePath = filePath,
+                    emojis = "✨"
                 )
 
                 _uiState.update { it.copy(isSaving = false, isSaveSuccess = true) }
