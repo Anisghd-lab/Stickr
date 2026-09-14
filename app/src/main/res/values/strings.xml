@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Stickr</string>
+    <string name="home_title">Mes Packs de Stickers</string>
+    <string name="create_pack">Nouveau Pack</string>
+    <string name="create_sticker">Créer un Sticker</string>
+    <string name="auto_cut">Détourage Auto (IA)</string>
+    <string name="manual_cut">Détourage Manuel</string>
+    <string name="add_text">Ajouter Texte</string>
+    <string name="add_border">Bordure</string>
+    <string name="save_sticker">Enregistrer</string>
+    <string name="export_whatsapp">Exporter vers WhatsApp</string>
+    <string name="export_telegram">Exporter vers Telegram</string>
+</resources>
