@@ -7,10 +7,13 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.stickr.app.core.data.repository.StickerPackRepository
 import com.stickr.app.domain.usecase.SegmentImageUseCase
+import com.stickr.app.feature.editor.model.DecorationLayer
+import com.stickr.app.feature.editor.model.TextLayer
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -53,6 +56,10 @@ class StickerEditorViewModelTest {
         assertEquals(Color.WHITE, state.borderColor)
         assertEquals(1.0f, state.scale, 0.01f)
         assertEquals(0.0f, state.rotation, 0.01f)
+        assertTrue(state.layers.isEmpty())
+        assertNull(state.selectedLayerId)
+        assertFalse(state.isTextDialogOpen)
+        assertFalse(state.isDecorationPickerOpen)
     }
 
     @Test
@@ -122,5 +129,121 @@ class StickerEditorViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(newColor, state.borderColor)
         assertTrue(state.canUndo)
+    }
+
+    @Test
+    fun `addTextLayer appends layer and sets active selection`() {
+        viewModel.addTextLayer(
+            text = "STICKR MEME",
+            textColor = Color.YELLOW,
+            strokeColor = Color.BLACK,
+            strokeWidth = 8f,
+            fontSize = 48f,
+            fontFamilyName = "Impact"
+        )
+
+        val state = viewModel.uiState.value
+        assertEquals(1, state.layers.size)
+
+        val added = state.layers.first() as TextLayer
+        assertEquals("STICKR MEME", added.text)
+        assertEquals(Color.YELLOW, added.textColor)
+        assertEquals(Color.BLACK, added.strokeColor)
+        assertEquals(8f, added.strokeWidth, 0.01f)
+        assertEquals(48f, added.fontSize, 0.01f)
+        assertEquals("Impact", added.fontFamilyName)
+        assertEquals(added.id, state.selectedLayerId)
+    }
+
+    @Test
+    fun `updateTextLayer modifies specific text layer attributes`() {
+        viewModel.addTextLayer(text = "INITIAL")
+        val initialId = viewModel.uiState.value.selectedLayerId!!
+
+        viewModel.updateTextLayer(
+            id = initialId,
+            text = "MODIFIED",
+            textColor = Color.CYAN,
+            strokeColor = Color.RED,
+            strokeWidth = 4f,
+            fontSize = 36f,
+            fontFamilyName = "Monospace"
+        )
+
+        val state = viewModel.uiState.value
+        val updated = state.layers.first() as TextLayer
+        assertEquals("MODIFIED", updated.text)
+        assertEquals(Color.CYAN, updated.textColor)
+        assertEquals(Color.RED, updated.strokeColor)
+        assertEquals(4f, updated.strokeWidth, 0.01f)
+        assertEquals(36f, updated.fontSize, 0.01f)
+        assertEquals("Monospace", updated.fontFamilyName)
+    }
+
+    @Test
+    fun `addDecorationLayer appends emoji layer and selects it`() {
+        viewModel.addDecorationLayer("🔥")
+
+        val state = viewModel.uiState.value
+        assertEquals(1, state.layers.size)
+
+        val deco = state.layers.first() as DecorationLayer
+        assertEquals("🔥", deco.assetPath)
+        assertEquals(deco.id, state.selectedLayerId)
+    }
+
+    @Test
+    fun `removeLayer deletes layer from list and updates selection`() {
+        viewModel.addTextLayer("Text 1")
+        val id1 = viewModel.uiState.value.selectedLayerId!!
+        viewModel.addDecorationLayer("👑")
+        val id2 = viewModel.uiState.value.selectedLayerId!!
+
+        assertEquals(2, viewModel.uiState.value.layers.size)
+        assertEquals(id2, viewModel.uiState.value.selectedLayerId)
+
+        viewModel.removeLayer(id2)
+
+        val state = viewModel.uiState.value
+        assertEquals(1, state.layers.size)
+        assertEquals(id1, state.layers.first().id)
+        assertEquals(id1, state.selectedLayerId)
+    }
+
+    @Test
+    fun `updateSelectedLayerTransform affects targeted active layer`() {
+        viewModel.addDecorationLayer("😎")
+        val layerId = viewModel.uiState.value.selectedLayerId!!
+
+        viewModel.updateSelectedLayerTransform(
+            pan = Offset(30f, 40f),
+            zoom = 2.0f,
+            rotate = 30f
+        )
+
+        val layer = viewModel.uiState.value.layers.first() as DecorationLayer
+        assertEquals(30f, layer.offset.x, 0.01f)
+        assertEquals(40f, layer.offset.y, 0.01f)
+        assertEquals(2.0f, layer.scale, 0.01f)
+        assertEquals(30f, layer.rotation, 0.01f)
+    }
+
+    @Test
+    fun `dialog controls toggle state as expected`() {
+        assertFalse(viewModel.uiState.value.isTextDialogOpen)
+        assertFalse(viewModel.uiState.value.isDecorationPickerOpen)
+
+        viewModel.openAddTextDialog()
+        assertTrue(viewModel.uiState.value.isTextDialogOpen)
+        assertNull(viewModel.uiState.value.editingTextLayer)
+
+        viewModel.closeTextDialog()
+        assertFalse(viewModel.uiState.value.isTextDialogOpen)
+
+        viewModel.openDecorationPicker()
+        assertTrue(viewModel.uiState.value.isDecorationPickerOpen)
+
+        viewModel.closeDecorationPicker()
+        assertFalse(viewModel.uiState.value.isDecorationPickerOpen)
     }
 }

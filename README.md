@@ -9,13 +9,10 @@ Elle intègre l'intelligence artificielle locale via **Google MediaPipe Tasks Vi
 ## 🚀 Fonctionnalités Clés
 
 - **Détourage Intelligent IA (Sur l'appareil)** : Segmentation et suppression d'arrière-plan haute précision grâce à Google MediaPipe Tasks Vision.
+- **Calques Multiples & Graphisme Tactile** : Empilement interactif du sujet détouré, d'accessoires décoratifs (lunettes, flammes, couronnes) et de textes stylisés (style mème avec contour contrasté).
+- **Moteur d'Aplatissement Graphique** : Fusion matricielle des calques en un Bitmap transparent 512x512 px avec compression stricte WebP < 100 Ko.
 - **Gestion des Packs de Stickers** : Création, catégorisation, consultation et gestion de packs personnalisés persistés localement avec Room.
-- **Éditeur de Stickers** :
-  - Importation d'images depuis la galerie ou la caméra.
-  - Découpage automatique par IA ou manuel.
-  - Ajout de bordures blanches de style sticker.
-  - Aperçu instantané sur fond en damier de transparence.
-- **Exportation & Partage** : Préparé pour l'exportation vers WhatsApp et Telegram via FileProvider sécurisé.
+- **Exportation Officielle WhatsApp** : Intégration complète du protocole WhatsApp Stickers avec ContentProvider, validation stricte et tray icon automatique.
 
 ---
 
@@ -42,38 +39,44 @@ com.stickr.app/
 ├── StickrApp.kt               # Application Hilt (@HiltAndroidApp)
 ├── MainActivity.kt            # Activité racine (@AndroidEntryPoint)
 │
-├── core/image/                # Moteur Graphique & IA (Étape 2)
+├── core/image/                # Moteur Graphique & IA
 │   ├── ImageSegmenterHelper.kt    # Inférence locale IA MediaPipe Tasks Vision
 │   ├── StickerBorderProcessor.kt  # Algorithme de contour die-cut (dilatation radiale)
-│   └── StickerExporter.kt         # Normalisation WebP 512x512 et compression WhatsApp <100 Ko
+│   ├── StickerExporter.kt         # Normalisation WebP 512x512 et compression WhatsApp <100 Ko
+│   ├── StickerFlattener.kt        # Aplatissement multi-calques 512x512 ARGB_8888 natif
+│   └── TrayIconHelper.kt          # Génération à la volée de l'icône de plateau 96x96 px
 │
-├── di/                        # Modules Hilt (Dagger)
-│   ├── AppModule.kt           # Fournisseurs de Dispatchers et Contexte
-│   ├── DatabaseModule.kt      # Configuration Room & DAOs
-│   ├── MediaPipeModule.kt     # Initialisation du module Vision IA
-│   └── RepositoryModule.kt    # Binding des interfaces de Repository
+├── core/database/             # Persistance Room Locale
+│   ├── StickrDatabase.kt          # Base de données Room
+│   ├── dao/StickerPackDao.kt      # DAO pour packs et stickers
+│   └── entity/                    # StickerPackEntity, StickerItemEntity, StickerPackWithStickers
 │
-├── domain/                    # Couche Domaine (Pure Kotlin)
-│   ├── model/                 # Modèles métiers (Sticker, StickerPack, SegmentationResult)
-│   ├── repository/            # Contrats d'interfaces (StickerRepository, ImageSegmentationRepository)
-│   └── usecase/               # Cas d'usage métier (SegmentImage, SaveSticker, GetPacks, CreatePack)
+├── core/provider/             # Intégration ContentProvider WhatsApp
+│   ├── StickerContentProvider.kt  # Provider IPC conforme au protocole WhatsApp
+│   └── StickerContentProviderContract.kt
 │
-├── data/                      # Couche Données (Implémentations)
-│   ├── local/
-│   │   ├── AppDatabase.kt     # Définition RoomDatabase
-│   │   ├── dao/               # StickerPackDao, StickerDao
-│   │   └── entity/            # StickerPackEntity, StickerEntity
-│   └── repository/
-│       ├── StickerRepositoryImpl.kt
-│       └── ImageSegmentationRepositoryImpl.kt
+├── feature/editor/model/      # Modèle de Calques Graphiques
+│   └── EditorLayer.kt             # SubjectLayer, TextLayer, DecorationLayer
 │
-└── presentation/              # Couche Présentation (UI Jetpack Compose)
-    ├── navigation/            # Graphe de navigation (Screen, StickrNavGraph)
-    ├── theme/                 # Thème Material 3 (Color, Theme, Type)
-    └── screens/
-        ├── home/              # Écran d'accueil (Liste des packs)
-        ├── editor/            # Écran d'édition (Détourage IA, bordure, aperçu)
-        └── packdetail/        # Écran de détails d'un pack (Grille de stickers, export)
+├── feature/dashboard/         # Tableau de bord des packs créés
+│   ├── DashboardScreen.kt
+│   ├── DashboardUiState.kt
+│   └── DashboardViewModel.kt
+│
+├── feature/packdetail/        # Vue détaillée d'un pack de stickers
+│   ├── PackDetailScreen.kt
+│   ├── PackDetailUiState.kt
+│   └── PackDetailViewModel.kt
+│
+└── presentation/screens/editor/ # Éditeur Tactile Multi-Calques
+    ├── InteractiveCanvas.kt       # Canvas multitouch 60/120 FPS avec calques et cadre de sélection
+    ├── EditorToolbar.kt           # Barre d'outils (IA, texte, accessoires, contour, undo/redo)
+    ├── StickerEditorScreen.kt     # Écran d'édition complet
+    ├── StickerEditorUiState.kt    # État UI réactif de l'éditeur
+    ├── StickerEditorViewModel.kt  # ViewModel Hilt pour l'édition et l'enregistrement
+    └── components/
+        ├── TextEditDialog.kt              # Boîte de dialogue de style texte (mème, polices, contours)
+        └── DecorationPickerBottomSheet.kt # Feuille de choix d'accessoires et emojis
 ```
 
 ---
@@ -95,6 +98,39 @@ com.stickr.app/
   * Canvas exact de **512x512 pixels** avec fond transparent et marge de sécurité (16px).
   * Encodage au format **WebP**.
   * Boucle de réduction dynamique de la qualité assurant un poids strictement **inférieur à 100 Ko** (102 400 octets).
+
+### 4. `StickerFlattener` (Moteur d'Aplatissement Multi-Calques)
+- Fonction : `fun flattenLayers(canvasSize: Int = 512, layers: List<EditorLayer>, marginPx: Int = 16): Bitmap`
+- Fusionne l'ensemble des calques ordonnés (`SubjectLayer`, `DecorationLayer`, `TextLayer`) en un unique Bitmap 512x512 px `ARGB_8888` transparent.
+- Applique les matrices de transformation (translation, zoom, rotation) pour chaque calque.
+- Rendu double-passe pour le texte stylisé : contour externe (`Paint.Style.STROKE`) puis remplissage intérieur (`Paint.Style.FILL`) avec polices dynamiques (Impact mème, Sans-Serif, Serif, Monospace, Cursive).
+
+---
+
+## 🎭 Calques de Texte Stylisé & Accessoires (`feature:editor-layers`)
+
+### 1. Modèle de Données (`EditorLayer`)
+- **`SubjectLayer`** : Sujet de la photo détouré avec contour die-cut personnalisable, translation, rotation et zoom.
+- **`TextLayer`** : Texte stylisé avec contour contrasté, choix de couleur de texte (Fill), couleur de trait (Stroke), épaisseur de contour, taille de police et police d'écriture.
+- **`DecorationLayer`** : Accessoires et emojis populaires (😎, 👑, 🔥, 💬, 🍕, etc.) manipulables avec redimensionnement et rotation.
+
+### 2. Dialogue d'Édition de Texte (`TextEditDialog`)
+- Saisie de texte avec aperçu dynamique en direct sur fond damier.
+- Sélection de polices : Impact, Sans-Serif, Serif, Monospace, Cursive.
+- Palettes de couleurs indépendantes pour le remplissage et le contour.
+- Sliders pour la taille de police (20 à 72 sp) et l'épaisseur du trait (0 à 16 px).
+
+### 3. Sélecteur d'Accessoires (`DecorationPickerBottomSheet`)
+- Catégories thématiques : *Accessoires*, *Mèmes & Réactions*, *Émotions & Bulles*, *Food & Objets*.
+- Grille tactile avec insertion immédiate sur le canvas au centre.
+
+### 4. Canvas Tactile Interactif Multi-Calques (`InteractiveCanvas`)
+- Rendu GPU accéléré via `graphicsLayer`.
+- Cadre de sélection visuel (bounding box cyan) autour du calque actif.
+- Poignée de suppression rapide (X) sur le calque sélectionné.
+- Bouton d'édition rapide (icône crayon) sur les calques de texte.
+- Barre de sélection rapide de calques (FilterChips) pour basculer facilement entre calques superposés.
+- Routage intelligent des gestes tactiles vers le calque sélectionné (ou le sujet principal par défaut).
 
 ---
 
@@ -134,25 +170,6 @@ Le modèle officiel suivant est déjà inclus dans le dépôt :
 
 ---
 
-## 🖐️ Éditeur Graphique Tactile (`presentation:screens:editor`)
-
-### 1. `InteractiveCanvas` (Espace de Travail 60/120 FPS)
-- **Motif Damier de Transparence (Checkerboard)** : Rendu graphique ultra-rapide en arrière-plan permettant de visualiser instantanément les zones détourées transparentes.
-- **Accélération Matérielle GPU** : Les gestes multitouch de mise à l'échelle (pinch-to-zoom), rotation et translation s'exécutent via `Modifier.graphicsLayer` sur le `RenderNode` GPU, garantissant une fluidité maximale à 60/120 FPS sans recomposition du layout.
-
-### 2. `EditorToolbar` (Contrôles & Outils)
-- **Détourage IA MediaPipe** : Déclencheur avec indicateur de progression circulaire pour la segmentation automatique locale sans latence serveur.
-- **Curseur de Contour (Die-Cut)** : Slider d'ajustement dynamique de 0 à 32 pixels.
-- **Palette de Couleurs Rapide** : Puces de couleur (Blanc vinyle, Noir, Jaune vif, Cyan, Vert lime, Rouge néon, Violet).
-- **Historique Annuler / Rétablir (Undo/Redo)** : Gestion de pile pour restaurer ou réappliquer les réglages de bordure.
-- **Réinitialisation** : Bouton de réinitialisation instantanée du cadrage au centre.
-
-### 3. `StickerEditorViewModel` & Sélecteur sans Permissions
-- Intégration du sélecteur d'images moderne `ActivityResultContracts.PickVisualMedia()` (Android Photo Picker, zéro permission de stockage requise).
-- Enregistrement direct au standard strict WhatsApp WebP via `StickerExporter.prepareForWhatsApp()`.
-
----
-
 ## 🗄️ Persistance Room & Gestion des Packs (`feature:pack-management`)
 
 ### 1. Base de données Room (`core:database`)
@@ -172,9 +189,7 @@ Le modèle officiel suivant est déjà inclus dans le dépôt :
 ### 3. Dashboard (`feature.dashboard`)
 - **`DashboardScreen` & `DashboardViewModel`** :
   * Affichage réactif de la liste des packs créés avec miniature ou mosaïque.
-  * Badges d'état dynamiques :
-    - 🟢 Vert : *"Prêt pour WhatsApp"* si $\ge 3$ stickers.
-    - 🟠 Orange : *"Ajoutez encore X sticker(s)"* si $< 3$ stickers.
+  * Badges d'état dynamiques (vert si $\ge 3$ stickers, orange si $< 3$).
   * Bouton d'action directe *"Ajouter à WhatsApp"* sur la carte de pack.
   * Dialogue de création de pack avec saisie du nom et de l'auteur.
 
@@ -184,7 +199,3 @@ Le modèle officiel suivant est déjà inclus dans le dépôt :
   * Grille des stickers avec suppression rapide et dialogue d'association d'émojis (1 à 3 émojis max pour WhatsApp).
   * Bouton (+) ouvrant l'éditeur tactile `StickerEditorScreen`.
   * Bouton fixe d'exportation officielle vers WhatsApp en pied d'écran.
-
-### 5. Navigation Unifiée (`AppNavigation`)
-- Relie de manière fluide et réactive `Dashboard -> PackDetail -> StickerEditor`.
-- Le rafraîchissement est automatique et instantané grâce aux `Flow` de Room lors du retour de l'éditeur vers le détail du pack.

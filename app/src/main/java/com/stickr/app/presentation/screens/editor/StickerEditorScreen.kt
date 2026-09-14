@@ -39,13 +39,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.stickr.app.presentation.screens.editor.components.DecorationPickerBottomSheet
+import com.stickr.app.presentation.screens.editor.components.TextEditDialog
 import kotlinx.coroutines.launch
 
 /**
- * Écran d'édition graphique tactile (StickerEditorScreen).
+ * Écran d'édition graphique tactile multi-calques (StickerEditorScreen).
  *
  * Combine l'importation moderne sans permission (Photo Picker), le détourage IA automatique
- * sur l'appareil (MediaPipe), la manipulation gestuelle multitouch et l'exportation stricte WebP.
+ * sur l'appareil (MediaPipe), la manipulation multi-calques tactile (sujet, accessoires, mème texte stylisé),
+ * l'aplatissement graphique natif et l'exportation stricte WebP pour WhatsApp.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,7 +122,7 @@ fun StickerEditorScreen(
                         )
                     }
 
-                    // Bouton Enregistrer le sticker WebP
+                    // Bouton Enregistrer le sticker WebP aplati
                     if (state.hasImage) {
                         Button(
                             onClick = {
@@ -170,7 +173,7 @@ fun StickerEditorScreen(
                 .padding(padding)
                 .background(Color(0xFF121212))
         ) {
-            // Espace de travail central avec canvas tactile et damier de transparence
+            // Espace de travail central avec canvas tactile multi-calques et damier de transparence
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -179,13 +182,24 @@ fun StickerEditorScreen(
             ) {
                 InteractiveCanvas(
                     bitmap = state.renderedBitmap,
+                    layers = state.layers,
+                    selectedLayerId = state.selectedLayerId,
                     scale = state.scale,
                     rotation = state.rotation,
                     offsetX = state.offsetX,
                     offsetY = state.offsetY,
                     isSegmenting = state.isSegmenting,
                     onTransformChanged = { pan, zoom, rotate ->
-                        viewModel.onTransformGesture(pan, zoom, rotate)
+                        viewModel.updateSelectedLayerTransform(pan, zoom, rotate)
+                    },
+                    onSelectLayer = { layerId ->
+                        viewModel.selectLayer(layerId)
+                    },
+                    onDeleteLayer = { layerId ->
+                        viewModel.removeLayer(layerId)
+                    },
+                    onEditTextLayer = { textLayer ->
+                        viewModel.openEditTextDialog(textLayer)
                     },
                     onPickImageClick = {
                         photoPicker.launch(
@@ -195,7 +209,7 @@ fun StickerEditorScreen(
                 )
             }
 
-            // Barre d'outils inférieure pour les commandes IA et réglages de contour
+            // Barre d'outils inférieure pour les commandes IA, ajout de texte/accessoires et contour
             if (state.hasImage) {
                 EditorToolbar(
                     isCutout = state.isCutout,
@@ -205,6 +219,8 @@ fun StickerEditorScreen(
                     canUndo = state.canUndo,
                     canRedo = state.canRedo,
                     onAiSegmentClick = { viewModel.performAiSegmentation() },
+                    onAddTextClick = { viewModel.openAddTextDialog() },
+                    onAddDecorationClick = { viewModel.openDecorationPicker() },
                     onBorderSizeChange = { newSize -> viewModel.setBorderSize(newSize, commitToHistory = false) },
                     onBorderSizeCommit = { finalSize -> viewModel.setBorderSize(finalSize, commitToHistory = true) },
                     onBorderColorChange = { newColor -> viewModel.setBorderColor(newColor) },
@@ -213,6 +229,47 @@ fun StickerEditorScreen(
                     onResetTransformClick = { viewModel.resetTransform() }
                 )
             }
+        }
+
+        // Dialogue modal d'édition de texte stylisé
+        if (state.isTextDialogOpen) {
+            TextEditDialog(
+                initialTextLayer = state.editingTextLayer,
+                onDismissRequest = { viewModel.closeTextDialog() },
+                onConfirm = { text, textColor, strokeColor, strokeWidth, fontSize, fontFamilyName ->
+                    val editing = state.editingTextLayer
+                    if (editing != null) {
+                        viewModel.updateTextLayer(
+                            id = editing.id,
+                            text = text,
+                            textColor = textColor,
+                            strokeColor = strokeColor,
+                            strokeWidth = strokeWidth,
+                            fontSize = fontSize,
+                            fontFamilyName = fontFamilyName
+                        )
+                    } else {
+                        viewModel.addTextLayer(
+                            text = text,
+                            textColor = textColor,
+                            strokeColor = strokeColor,
+                            strokeWidth = strokeWidth,
+                            fontSize = fontSize,
+                            fontFamilyName = fontFamilyName
+                        )
+                    }
+                }
+            )
+        }
+
+        // BottomSheet de sélection d'accessoires et d'emojis
+        if (state.isDecorationPickerOpen) {
+            DecorationPickerBottomSheet(
+                onDismissRequest = { viewModel.closeDecorationPicker() },
+                onDecorationSelected = { assetOrEmoji ->
+                    viewModel.addDecorationLayer(assetOrEmoji)
+                }
+            )
         }
     }
 }

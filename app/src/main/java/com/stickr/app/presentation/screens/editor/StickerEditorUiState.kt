@@ -2,6 +2,8 @@ package com.stickr.app.presentation.screens.editor
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import com.stickr.app.feature.editor.model.EditorLayer
+import com.stickr.app.feature.editor.model.TextLayer
 
 /**
  * Configuration snapshot pour l'historique Annuler / Rétablir (Undo/Redo).
@@ -12,7 +14,7 @@ data class BorderConfig(
 )
 
 /**
- * État de l'interface graphique de l'éditeur tactile de stickers.
+ * État de l'interface graphique de l'éditeur tactile de stickers multi-calques.
  *
  * @param packId ID du pack de destination.
  * @param originalBitmap Image brute importée par l'utilisateur.
@@ -31,6 +33,11 @@ data class BorderConfig(
  * @param canUndo True si une action de contour peut être annulée.
  * @param canRedo True si une action de contour peut être rétablie.
  * @param errorMessage Message d'erreur éventuel à présenter à l'utilisateur.
+ * @param layers Liste ordonnée de calques graphiques (sujet, accessoires, textes stylisés).
+ * @param selectedLayerId Identifiant du calque actuellement sélectionné par l'utilisateur.
+ * @param isTextDialogOpen True lorsque la boîte de dialogue d'édition de texte est ouverte.
+ * @param editingTextLayer Calque de texte en cours d'édition (null si ajout d'un nouveau calque).
+ * @param isDecorationPickerOpen True lorsque la feuille de sélection d'accessoires est ouverte.
  */
 data class StickerEditorUiState(
     val packId: String = "",
@@ -49,11 +56,19 @@ data class StickerEditorUiState(
     val offsetY: Float = 0.0f,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val layers: List<EditorLayer> = emptyList(),
+    val selectedLayerId: String? = null,
+    val isTextDialogOpen: Boolean = false,
+    val editingTextLayer: TextLayer? = null,
+    val isDecorationPickerOpen: Boolean = false
 ) {
     val hasImage: Boolean
         get() = originalBitmap != null
 
     val isCutout: Boolean
         get() = cutoutBitmap != null
+
+    val selectedLayer: EditorLayer?
+        get() = layers.firstOrNull { it.id == selectedLayerId }
 }

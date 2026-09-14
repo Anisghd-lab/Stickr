@@ -22,7 +22,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,6 +59,7 @@ val BORDER_COLORS = listOf(
 /**
  * Barre d'outils d'édition inférieure (EditorToolbar) :
  * - Déclencheur du détourage IA MediaPipe avec indicateur actif.
+ * - Boutons d'ajout de calques (Texte stylisé et Accessoires).
  * - Slider d'épaisseur de contour (0 à 32 px).
  * - Palette de sélection rapide des couleurs de contour.
  * - Contrôles Annuler (Undo), Rétablir (Redo) et Réinitialiser zoom.
@@ -70,6 +73,8 @@ fun EditorToolbar(
     canUndo: Boolean,
     canRedo: Boolean,
     onAiSegmentClick: () -> Unit,
+    onAddTextClick: () -> Unit = {},
+    onAddDecorationClick: () -> Unit = {},
     onBorderSizeChange: (Float) -> Unit,
     onBorderSizeCommit: (Float) -> Unit,
     onBorderColorChange: (Int) -> Unit,
@@ -87,9 +92,9 @@ fun EditorToolbar(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            // Ligne supérieure : Bouton Détourage IA + Undo / Redo / Reset
+            // Ligne supérieure : Bouton Détourage IA + Outils Calques (Texte, Accessoires) + Undo / Redo / Reset
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -117,17 +122,46 @@ fun EditorToolbar(
                             modifier = Modifier.size(18.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (isSegmenting) "Détourage..." else if (isCutout) "Re-détourer IA" else "Détourer IA",
+                        text = if (isSegmenting) "Détourage..." else if (isCutout) "Re-détourer" else "Détourer IA",
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Bouton Ajouter Texte
+                    IconButton(
+                        onClick = onAddTextClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.TextFields,
+                            contentDescription = "Ajouter texte",
+                            tint = Color.White
+                        )
+                    }
+
+                    // Bouton Ajouter Accessoire
+                    IconButton(
+                        onClick = onAddDecorationClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Celebration,
+                            contentDescription = "Accessoires",
+                            tint = Color.White
+                        )
+                    }
+
+                    // Bouton Annuler
                     IconButton(
                         onClick = onUndoClick,
-                        enabled = canUndo
+                        enabled = canUndo,
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Undo,
@@ -136,9 +170,11 @@ fun EditorToolbar(
                         )
                     }
 
+                    // Bouton Rétablir
                     IconButton(
                         onClick = onRedoClick,
-                        enabled = canRedo
+                        enabled = canRedo,
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Redo,
@@ -147,8 +183,10 @@ fun EditorToolbar(
                         )
                     }
 
+                    // Bouton Réinitialiser Cadrage
                     IconButton(
-                        onClick = onResetTransformClick
+                        onClick = onResetTransformClick,
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.RestartAlt,
@@ -159,7 +197,7 @@ fun EditorToolbar(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Ligne intermédiaire : Curseur Slider de l'épaisseur de bordure
             Row(
@@ -192,7 +230,7 @@ fun EditorToolbar(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Ligne inférieure : Palette de couleurs de contour
             AnimatedVisibility(visible = borderSizePx > 0f) {
@@ -201,13 +239,13 @@ fun EditorToolbar(
                         text = "Couleur du contour",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFFAAAAAA),
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 6.dp)
                     )
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         for (color in BORDER_COLORS) {
                             val colorArgb = color.toArgb()
@@ -215,7 +253,7 @@ fun EditorToolbar(
 
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(34.dp)
                                     .clip(CircleShape)
                                     .background(color)
                                     .border(
