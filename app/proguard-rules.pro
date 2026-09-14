@@ -81,3 +81,13 @@
     public boolean compress(android.graphics.Bitmap$CompressFormat, int, java.io.OutputStream);
 }
 -keepclassmembers class android.graphics.BitmapFactory { *; }
+
+# ----------------------------------------------------------------------------
+# 8. Suppress compile-time annotations & AutoValue / JavaPoet warnings in R8
+# ----------------------------------------------------------------------------
+-dontwarn javax.lang.model.**
+-dontwarn javax.annotation.processing.**
+-dontwarn autovalue.shaded.**
+-dontwarn com.google.auto.value.**
+-dontwarn com.google.auto.**
+
