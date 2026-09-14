@@ -29,43 +29,49 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Build Android APKs (Release & Debug)
+        run: ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
 
-      - name: Rename APK for release
+      - name: Prepare APKs for release
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/debug/app-debug.apk release_apk/Stickr-v1.0.0.apk
+          cp app/build/outputs/apk/release/app-release.apk release_apk/Stickr-v1.0.0-release.apk
+          cp app/build/outputs/apk/debug/app-debug.apk release_apk/Stickr-v1.0.0-debug.apk
 
-      - name: Upload APK as GitHub Action Artifact
+      - name: Upload APKs as GitHub Action Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Stickr-v1.0.0-APK
-          path: release_apk/Stickr-v1.0.0.apk
+          name: Stickr-v1.0.0-APKs
+          path: release_apk/*.apk
           retention-days: 30
 
-      - name: Publish GitHub Release with APK
+      - name: Publish GitHub Release with APKs
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0
-          name: "Stickr v1.0.0 (APK Release)"
+          name: "Stickr v1.0.0 (Release & Debug APKs)"
           body: |
-            ### 🎨 Stickr — Application Android Native
+            ### 🎨 Stickr — Application Android Native v1.0.0
             
-            Téléchargez et installez directement le fichier APK officiel sur votre smartphone Android.
+            Téléchargez et installez directement l'APK officiel sur votre smartphone Android.
+
+            #### 📦 Fichiers APK disponibles :
+            - **`Stickr-v1.0.0-release.apk`** : Version Release optimisée (ProGuard / R8, shrink resources, signée). Recommandée pour l'utilisation quotidienne.
+            - **`Stickr-v1.0.0-debug.apk`** : Version Debug avec logs complets et inspection.
 
             #### ✨ Fonctionnalités incluses :
             - **Détourage IA instantané** local avec Google MediaPipe Vision (`selfie_segmenter.tflite`).
-            - **Éditeur graphique tactile Jetpack Compose (Material 3)** avec contour die-cut vinyle personnalisable.
-            - **Calques de texte stylisé mème** (Impact, Sans-Serif, Serif, etc.) avec stroke & fill et accessoires interactifs.
-            - **Intégration officielle WhatsApp** : création de packs, export en 1-clic et streaming via ContentProvider.
+            - **Éditeur graphique tactile Jetpack Compose (Material 3)** avec contour die-cut vinyle personnalisable (épaisseur, lissage, couleur).
+            - **Calques de texte stylisé mème** (Impact, Sans-Serif, Serif, etc.) avec stroke & fill et accessoires interactifs (lunettes, chapeaux, émojis).
+            - **Intégration officielle WhatsApp** : création de packs, export en 1-clic et streaming direct via ContentProvider.
             - **Optimisations Android 15 (SDK 35)** : Edge-to-Edge natif, Splash Screen AndroidX et icônes adaptatives Material You.
 
-            #### 📲 Installation :
-            1. Téléchargez le fichier **`Stickr-v1.0.0.apk`** ci-dessous.
-            2. Ouvrez-le sur votre smartphone Android pour l'installer (autorisez l'installation d'applications de sources inconnues si demandé).
+            #### 📲 Installation facile :
+            1. Téléchargez **`Stickr-v1.0.0-release.apk`** ci-dessous sur votre smartphone.
+            2. Ouvrez le fichier téléchargé et appuyez sur **Installer** (autorisez l'installation d'applications de sources inconnues si demandé par Android).
           files: |
-            release_apk/Stickr-v1.0.0.apk
+            release_apk/Stickr-v1.0.0-release.apk
+            release_apk/Stickr-v1.0.0-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
