@@ -84,6 +84,7 @@ fun InteractiveCanvas(
     onPickImageClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val checkerLight = Color(0xFF282828)
     val checkerDark = Color(0xFF1C1C1C)
 
@@ -149,7 +150,10 @@ fun InteractiveCanvas(
                             translationX = curOffX
                             translationY = curOffY
                         }
-                        .clickable { onSelectLayer(subjectLayer?.id ?: "subject_layer") },
+                        .clickable {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            onSelectLayer(subjectLayer?.id ?: "subject_layer")
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
@@ -166,8 +170,14 @@ fun InteractiveCanvas(
                 DecorationLayerItem(
                     layer = deco,
                     isSelected = isSelected,
-                    onClick = { onSelectLayer(deco.id) },
-                    onDelete = { onDeleteLayer(deco.id) }
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        onSelectLayer(deco.id)
+                    },
+                    onDelete = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onDeleteLayer(deco.id)
+                    }
                 )
             }
 
@@ -177,9 +187,18 @@ fun InteractiveCanvas(
                 TextLayerItem(
                     layer = textLayer,
                     isSelected = isSelected,
-                    onClick = { onSelectLayer(textLayer.id) },
-                    onDelete = { onDeleteLayer(textLayer.id) },
-                    onEdit = { onEditTextLayer(textLayer) }
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        onSelectLayer(textLayer.id)
+                    },
+                    onDelete = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onDeleteLayer(textLayer.id)
+                    },
+                    onEdit = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        onEditTextLayer(textLayer)
+                    }
                 )
             }
 
@@ -203,7 +222,10 @@ fun InteractiveCanvas(
 
                         FilterChip(
                             selected = isSelected,
-                            onClick = { onSelectLayer(layer.id) },
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                onSelectLayer(layer.id)
+                            },
                             label = { Text(label, fontSize = 12.sp) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.primary,

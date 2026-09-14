@@ -127,6 +127,7 @@ fun TextEditDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .androidx.compose.foundation.layout.imePadding()
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {

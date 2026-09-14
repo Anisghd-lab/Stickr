@@ -12,18 +12,19 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Mood
 import androidx.compose.material.icons.filled.Send
@@ -59,19 +60,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.stickr.app.core.database.entity.StickerItemEntity
-import com.stickr.app.core.model.WhatsAppStickerValidator
 import kotlinx.coroutines.launch
 import java.io.File
 
 /**
  * Écran Détail du Pack :
- * - Gestion complète des stickers du pack (ajout, suppression, émojis).
+ * - Gestion complète des stickers du pack (ajout, suppression avec confirmation, émojis).
  * - En-tête avec métadonnées éditables et miniature de plateau.
+ * - Dialogue de confirmation avant suppression définitive de sticker ou de pack.
+ * - Respect des insets de navigation Android 15 (Edge-to-Edge).
  * - Bouton proéminent d'exportation officielle vers WhatsApp.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,10 +89,13 @@ fun PackDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     var showEditMetadataDialog by remember { mutableStateOf(false) }
+    var showDeletePackDialog by remember { mutableStateOf(false) }
+    var stickerToDelete by remember { mutableStateOf<StickerItemEntity?>(null) }
     var selectedStickerForEmoji by remember { mutableStateOf<StickerItemEntity?>(null) }
 
     Scaffold(
@@ -120,6 +127,13 @@ fun PackDetailScreen(
                                 tint = Color.White
                             )
                         }
+                        IconButton(onClick = { showDeletePackDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteOutline,
+                                contentDescription = "Supprimer le pack",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -129,15 +143,18 @@ fun PackDetailScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { onNavigateToEditor(packId) },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onNavigateToEditor(packId)
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
+                contentColor = Color.White,
+                modifier = Modifier.navigationBarsPadding()
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Ajouter un sticker")
             }
         },
         bottomBar = {
-            // Bouton principal proéminent en bas d'écran pour l'export WhatsApp
             if (state.packWithStickers != null) {
                 Surface(
                     color = Color(0xFF18181E),
@@ -147,6 +164,7 @@ fun PackDetailScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .navigationBarsPadding()
                             .padding(16.dp)
                     ) {
                         val isReady = state.isWhatsAppReady
@@ -163,6 +181,7 @@ fun PackDetailScreen(
 
                         Button(
                             onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 viewModel.exportToWhatsApp(context) { msg ->
                                     scope.launch { snackbarHostState.showSnackbar(msg) }
                                 }
@@ -332,7 +351,7 @@ fun PackDetailScreen(
                                 items(stickers, key = { it.id }) { sticker ->
                                     StickerItemCard(
                                         sticker = sticker,
-                                        onDelete = { viewModel.deleteSticker(sticker.id) },
+                                        onDelete = { stickerToDelete = sticker },
                                         onEditEmoji = { selectedStickerForEmoji = sticker }
                                     )
                                 }
@@ -342,6 +361,87 @@ fun PackDetailScreen(
                 }
             }
         }
+    }
+
+    // Confirmation de suppression d'un sticker
+    stickerToDelete?.let { sticker ->
+        AlertDialog(
+            onDismissRequest = { stickerToDelete = null },
+            shape = RoundedCornerShape(18.dp),
+            containerColor = Color(0xFF1E1E24),
+            title = {
+                Text("Supprimer ce sticker ?", color = Color.White)
+            },
+            text = {
+                Text(
+                    "Ce sticker sera définitivement supprimé du stockage local et du pack.",
+                    color = Color(0xFFAAAAAA)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.deleteSticker(sticker.id)
+                        stickerToDelete = null
+                        scope.launch { snackbarHostState.showSnackbar("Sticker supprimé") }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Supprimer")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { stickerToDelete = null }) {
+                    Text("Annuler", color = Color(0xFFAAAAAA))
+                }
+            }
+        )
+    }
+
+    // Confirmation de suppression du pack entier
+    if (showDeletePackDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeletePackDialog = false },
+            shape = RoundedCornerShape(18.dp),
+            containerColor = Color(0xFF1E1E24),
+            title = {
+                Text("Supprimer le pack entier ?", color = Color.White)
+            },
+            text = {
+                Text(
+                    "Le pack et tous ses fichiers associés seront supprimés de façon irréversible.",
+                    color = Color(0xFFAAAAAA)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.deletePack {
+                            showDeletePackDialog = false
+                            onNavigateBack()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Supprimer le pack")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeletePackDialog = false }) {
+                    Text("Annuler", color = Color(0xFFAAAAAA))
+                }
+            }
+        )
     }
 
     // Dialog Modification Métadonnées du pack

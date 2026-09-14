@@ -62,6 +62,17 @@ class PackDetailViewModel @Inject constructor(
         }
     }
 
+    fun deletePack(onDeleted: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                repository.deletePack(packId)
+                onDeleted()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Erreur de suppression du pack : ${e.localizedMessage}") }
+            }
+        }
+    }
+
     fun updateStickerEmojis(stickerId: String, newEmojis: String) {
         viewModelScope.launch {
             try {

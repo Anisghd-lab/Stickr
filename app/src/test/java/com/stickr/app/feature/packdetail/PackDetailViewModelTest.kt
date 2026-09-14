@@ -76,4 +76,12 @@ class PackDetailViewModelTest {
             feedback.contains("au moins 3 stickers")
         )
     }
+
+    @Test
+    fun `deletePack calls repository deletePack and triggers callback`() {
+        var callbackCalled = false
+        viewModel.deletePack { callbackCalled = true }
+        coVerify { repository.deletePack("pack_test") }
+        assertTrue(callbackCalled)
+    }
 }

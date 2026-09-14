@@ -199,3 +199,28 @@ Le modèle officiel suivant est déjà inclus dans le dépôt :
   * Grille des stickers avec suppression rapide et dialogue d'association d'émojis (1 à 3 émojis max pour WhatsApp).
   * Bouton (+) ouvrant l'éditeur tactile `StickerEditorScreen`.
   * Bouton fixe d'exportation officielle vers WhatsApp en pied d'écran.
+
+---
+
+## ⚡ Polissage UI/UX, Android 15 (SDK 35) & Production ProGuard/R8 (`production-ready`)
+
+### 1. Optimisations ProGuard & R8 (`app/proguard-rules.pro`)
+- **Minification & Shrinking** : Activation de `isMinifyEnabled = true` et `isShrinkResources = true` dans le buildType `release`.
+- **Règles Strictes MediaPipe Vision & TFLite** : Préservation intégrale des graphes TFLite, des interfaces JNI et des bibliothèques C++ sous-jacentes.
+- **Préservation Room & Hilt** : Conservation des DAOs, entités Room, migrations SQLite et composants générés Hilt/Dagger.
+- **Modèles Métiers & Format WebP** : Sécurisation des méthodes d'encodage `Bitmap.compress` et des modèles de calques de l'éditeur contre l'obfuscation destructrice.
+
+### 2. Compatibilité Android 15 (SDK 35) & Edge-to-Edge
+- **`enableEdgeToEdge()`** : Activé au lancement de `MainActivity` avec barres de statut et de navigation transparentes.
+- **Gestion des Insets Système** : Prise en charge de `navigationBarsPadding()` pour les barres d'outils et boutons flottants, et `imePadding()` pour la saisie clavier dans les dialogues d'édition sans masquage.
+
+### 3. Branding & Assets Système
+- **AndroidX Core Splashscreen (`Theme.App.Starting`)** : Lancement fluide sans écran blanc/noir statique avec logo vectoriel découpé (`ic_splash_logo.xml`).
+- **Icône Adaptative (Android 8.0+)** : Structure `adaptive-icon` complète (`ic_launcher.xml` et `ic_launcher_round.xml`) avec premier plan (`ic_launcher_foreground.xml`) et arrière-plan sombre (`ic_launcher_background.xml`).
+- **Support Monochrome Material You (Android 13+)** : Icône vectorielle monochrome (`ic_launcher_monochrome.xml`) pour les thèmes dynamiques du lanceur d'applications.
+
+### 4. Améliorations UX & Retours Utilisateur
+- **Retours Haptiques (`LocalHapticFeedback`)** : Retours discrets et réactifs (`LongPress` et `TextHandleMove`) lors du détourage IA, de la manipulation de calques, du slider de contour et de l'exportation.
+- **Dialogues de Confirmation Sécurisés** : Protection contre les fausses manipulations lors de la suppression de stickers ou de packs entiers.
+- **Empty State Illustré sur le Dashboard** : Écran d'accueil accueillant avec cercle dégradé, résumé des fonctionnalités clés (IA, calques tactiles, export 1-clic) et bouton d'action incitatif.
+

@@ -83,6 +83,8 @@ fun EditorToolbar(
     onResetTransformClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
     Surface(
         color = Color(0xFF18181B),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
@@ -92,6 +94,7 @@ fun EditorToolbar(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             // Ligne supérieure : Bouton Détourage IA + Outils Calques (Texte, Accessoires) + Undo / Redo / Reset
@@ -101,7 +104,10 @@ fun EditorToolbar(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Button(
-                    onClick = onAiSegmentClick,
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onAiSegmentClick()
+                    },
                     enabled = !isSegmenting,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -135,7 +141,10 @@ fun EditorToolbar(
                 ) {
                     // Bouton Ajouter Texte
                     IconButton(
-                        onClick = onAddTextClick,
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            onAddTextClick()
+                        },
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
@@ -147,7 +156,10 @@ fun EditorToolbar(
 
                     // Bouton Ajouter Accessoire
                     IconButton(
-                        onClick = onAddDecorationClick,
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            onAddDecorationClick()
+                        },
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
@@ -159,7 +171,10 @@ fun EditorToolbar(
 
                     // Bouton Annuler
                     IconButton(
-                        onClick = onUndoClick,
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            onUndoClick()
+                        },
                         enabled = canUndo,
                         modifier = Modifier.size(36.dp)
                     ) {
@@ -172,7 +187,10 @@ fun EditorToolbar(
 
                     // Bouton Rétablir
                     IconButton(
-                        onClick = onRedoClick,
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            onRedoClick()
+                        },
                         enabled = canRedo,
                         modifier = Modifier.size(36.dp)
                     ) {
@@ -185,7 +203,10 @@ fun EditorToolbar(
 
                     // Bouton Réinitialiser Cadrage
                     IconButton(
-                        onClick = onResetTransformClick,
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            onResetTransformClick()
+                        },
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(

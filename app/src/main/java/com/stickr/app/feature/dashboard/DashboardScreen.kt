@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
@@ -33,6 +35,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -54,17 +57,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.stickr.app.core.database.entity.StickerPackWithStickers
 import kotlinx.coroutines.launch
 import java.io.File
 
 /**
- * Écran Dashboard affichant la liste des packs de stickers avec statut WhatsApp et actions rapides.
+ * Écran Dashboard affichant la liste des packs de stickers avec statut WhatsApp,
+ * retours haptiques, gestion de la suppression sécurisée et état vide enrichi.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,9 +85,12 @@ fun DashboardScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
     var showCreateDialog by remember { mutableStateOf(false) }
+    var packToDelete by remember { mutableStateOf<StickerPackWithStickers?>(null) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -106,9 +118,13 @@ fun DashboardScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showCreateDialog = true },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showCreateDialog = true
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
+                contentColor = Color.White,
+                modifier = Modifier.navigationBarsPadding()
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Créer un pack")
             }
@@ -130,11 +146,14 @@ fun DashboardScreen(
                     )
                 }
                 state.packs.isEmpty() -> {
-                    EmptyDashboardPlaceholder(onCreateClick = { showCreateDialog = true })
+                    EmptyDashboardPlaceholder(onCreateClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showCreateDialog = true
+                    })
                 }
                 else -> {
                     LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 80.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
@@ -142,7 +161,9 @@ fun DashboardScreen(
                             PackCardItem(
                                 packWithStickers = packWithStickers,
                                 onClick = { onNavigateToPackDetail(packWithStickers.pack.id) },
+                                onDeleteClick = { packToDelete = packWithStickers },
                                 onExportWhatsApp = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     viewModel.exportToWhatsApp(context, packWithStickers) { feedback ->
                                         scope.launch { snackbarHostState.showSnackbar(feedback) }
                                     }
@@ -155,10 +176,59 @@ fun DashboardScreen(
         }
     }
 
+    // Dialogue de confirmation de suppression d'un pack
+    packToDelete?.let { packItem ->
+        AlertDialog(
+            onDismissRequest = { packToDelete = null },
+            shape = RoundedCornerShape(18.dp),
+            containerColor = Color(0xFF1E1E24),
+            title = {
+                Text(
+                    text = "Supprimer ce pack ?",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White
+                )
+            },
+            text = {
+                Text(
+                    text = "Le pack « ${packItem.pack.name} » et l'ensemble de ses stickers associés seront définitivement effacés.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFFAAAAAA)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.deletePack(packItem.pack.id)
+                        packToDelete = null
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Pack supprimé avec succès")
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Supprimer")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { packToDelete = null }) {
+                    Text("Annuler", color = Color(0xFFAAAAAA))
+                }
+            }
+        )
+    }
+
+    // Dialogue de création d'un nouveau pack
     if (showCreateDialog) {
         CreatePackDialog(
             onDismiss = { showCreateDialog = false },
             onConfirm = { name, author ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.createNewPack(name, author) { newPackId ->
                     showCreateDialog = false
                     onNavigateToPackDetail(newPackId)
@@ -172,6 +242,7 @@ fun DashboardScreen(
 fun PackCardItem(
     packWithStickers: StickerPackWithStickers,
     onClick: () -> Unit,
+    onDeleteClick: () -> Unit,
     onExportWhatsApp: () -> Unit
 ) {
     val pack = packWithStickers.pack
@@ -227,6 +298,15 @@ fun PackCardItem(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                         )
                     }
+                }
+
+                // Bouton suppression rapide
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteOutline,
+                        contentDescription = "Supprimer le pack",
+                        tint = Color(0xFF888888)
+                    )
                 }
             }
 
@@ -305,7 +385,6 @@ fun PackThumbnailMosaic(
         contentAlignment = Alignment.Center
     ) {
         when {
-            // 1. Si trayImagePath est renseigné et existe sur disque
             !trayPath.isNullOrBlank() && File(trayPath).exists() -> {
                 AsyncImage(
                     model = File(trayPath),
@@ -314,7 +393,6 @@ fun PackThumbnailMosaic(
                     modifier = Modifier.fillMaxSize().padding(6.dp)
                 )
             }
-            // 2. Mosaïque du premier sticker
             stickers.isNotEmpty() && File(stickers[0].imagePath).exists() -> {
                 AsyncImage(
                     model = File(stickers[0].imagePath),
@@ -323,7 +401,6 @@ fun PackThumbnailMosaic(
                     modifier = Modifier.fillMaxSize().padding(6.dp)
                 )
             }
-            // 3. Placeholder icône par défaut
             else -> {
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
@@ -341,46 +418,107 @@ fun EmptyDashboardPlaceholder(onCreateClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // Icône avec cercle dégradé moderne
         Box(
             modifier = Modifier
-                .size(96.dp)
+                .size(110.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF1E1E24)),
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                            Color(0xFF1E1E24)
+                        )
+                    )
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.AutoAwesome,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(54.dp)
             )
         }
-        Spacer(modifier = Modifier.height(20.dp))
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         Text(
             text = "Aucun pack de stickers",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             color = Color.White
         )
+
         Spacer(modifier = Modifier.height(8.dp))
+
         Text(
-            text = "Crée ton premier pack et découpe tes photos en stickers avec l'IA !",
+            text = "Transforme tes photos en autocollants uniques et partage-les avec tes proches sur WhatsApp.",
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFFAAAAAA),
             modifier = Modifier.padding(horizontal = 16.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(24.dp))
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Puces informatives
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xFF1A1A22))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "✂️", fontSize = 18.sp)
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Détourage instantané IA Google MediaPipe",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFDDDDDD)
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "🎨", fontSize = 18.sp)
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Textes mèmes stylisés et accessoires tactiles",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFDDDDDD)
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "🚀", fontSize = 18.sp)
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Exportation officielle 1-clic vers WhatsApp",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFDDDDDD)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
         Button(
             onClick = onCreateClick,
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Créer un nouveau pack")
+            Text("Créer mon premier pack", style = MaterialTheme.typography.titleSmall)
         }
     }
 }
