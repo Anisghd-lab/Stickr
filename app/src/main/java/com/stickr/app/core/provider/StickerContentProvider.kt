@@ -23,10 +23,10 @@ import java.io.FileOutputStream
  *
  * Le client WhatsApp communique directement avec ce Provider via Binder IPC pour :
  * 1. Lire la liste des packs de stickers disponibles (`/metadata`)
- * 2. Lire les métadonnées d'un pack spécifique (`/metadata/*`)
- * 3. Lister les stickers d'un pack (`/stickers/*`)
- * 4. Obtenir le flux binaire de chaque sticker WebP (`/stickers_asset/*/*`)
- * 5. Obtenir l'icône de plateau 96x96 px (`/tray_asset/*`)
+ * 2. Lire les métadonnées d'un pack spécifique (`/metadata/{id}`)
+ * 3. Lister les stickers d'un pack (`/stickers/{id}`)
+ * 4. Obtenir le flux binaire de chaque sticker WebP (`/stickers_asset/{id}/{sticker}`)
+ * 5. Obtenir l'icône de plateau 96x96 px (`/tray_asset/{id}`)
  */
 class StickerContentProvider : ContentProvider() {
 
