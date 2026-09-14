@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Stickr - Éditeur de Stickers WhatsApp (Web Demo)</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@700&family=Playfair+Display:wght@700&family=JetBrains+Mono:wght@700&family=Pacifico&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Status Bar (Android Style) -->
+    <div class="status-bar">
+      <span id="status-time">12:00</span>
+      <div class="status-icons">
+        <span>📶</span>
+        <span>🔋 100%</span>
+      </div>
+    </div>
+
+    <!-- MAIN APP SCREENS -->
+
+    <!-- SCREEN 1: DASHBOARD -->
+    <section id="screen-dashboard" class="screen active">
+      <header class="app-bar">
+        <div class="app-bar-title">
+          <span class="app-bar-icon">✨</span>
+          <h1>Mes Packs de Stickers</h1>
+        </div>
+      </header>
+
+      <main class="content-area scrollable">
+        <div id="packs-list" class="packs-list">
+          <!-- Dynamically populated packs -->
+        </div>
+
+        <div id="empty-dashboard" class="empty-state hidden">
+          <div class="empty-icon-circle">
+            <span>✨</span>
+          </div>
+          <h2>Aucun pack de stickers</h2>
+          <p>Transforme tes photos en autocollants uniques et partage-les avec tes proches sur WhatsApp.</p>
+          <div class="feature-bullets">
+            <div class="bullet-item"><span>✂️</span> Détourage instantané IA</div>
+            <div class="bullet-item"><span>🎨</span> Textes mèmes & accessoires tactiles</div>
+            <div class="bullet-item"><span>🚀</span> Exportation officielle WhatsApp</div>
+          </div>
+          <button class="btn btn-primary btn-large" id="btn-empty-create">Créer mon premier pack</button>
+        </div>
+      </main>
+
+      <button id="fab-create-pack" class="fab" title="Nouveau Pack">
+        <span>+</span>
+      </button>
+    </section>
+
+    <!-- SCREEN 2: PACK DETAIL -->
+    <section id="screen-pack-detail" class="screen">
+      <header class="app-bar">
+        <button class="btn-icon" id="btn-back-to-dashboard" title="Retour">←</button>
+        <div class="app-bar-title">
+          <h1 id="pack-detail-title">Détails du pack</h1>
+        </div>
+        <button class="btn-icon text-danger" id="btn-delete-current-pack" title="Supprimer le pack">🗑️</button>
+      </header>
+
+      <main class="content-area scrollable">
+        <div class="pack-header-card">
+          <div class="pack-tray-thumb" id="pack-detail-tray">
+            <span>🎨</span>
+          </div>
+          <div class="pack-header-info">
+            <h2 id="pack-detail-name">Nom du pack</h2>
+            <p id="pack-detail-author">Par Auteur</p>
+            <span class="badge badge-counter" id="pack-detail-counter">0/30 stickers</span>
+          </div>
+        </div>
+
+        <div class="stickers-section">
+          <div class="stickers-grid" id="stickers-grid">
+            <!-- Stickers populated here -->
+          </div>
+        </div>
+      </main>
+
+      <div class="bottom-action-bar">
+        <div id="whatsapp-hint" class="whatsapp-hint">WhatsApp requiert au moins 3 stickers</div>
+        <button id="btn-export-whatsapp" class="btn btn-whatsapp" disabled>
+          <span>🚀 Exporter vers WhatsApp</span>
+        </button>
+      </div>
+
+      <button id="fab-add-sticker" class="fab" title="Ajouter un sticker">
+        <span>+</span>
+      </button>
+    </section>
+
+    <!-- SCREEN 3: STICKER CANVAS EDITOR -->
+    <section id="screen-editor" class="screen">
+      <header class="app-bar">
+        <button class="btn-icon" id="btn-back-to-pack" title="Retour">←</button>
+        <div class="app-bar-title">
+          <h1>Éditeur de Sticker</h1>
+        </div>
+        <div class="app-bar-actions">
+          <label for="input-image-file" class="btn-icon" title="Importer une image">🖼️</label>
+          <input type="file" id="input-image-file" accept="image/*" class="hidden">
+          <button id="btn-save-sticker" class="btn btn-primary btn-save">✓ Enregistrer</button>
+        </div>
+      </header>
+
+      <main class="editor-workspace">
+        <!-- Layer quick selector chips -->
+        <div class="layer-chips-bar" id="layer-chips-bar">
+          <div class="layer-chip active" data-layer-id="subject">Sujet</div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="canvas-viewport" id="canvas-viewport">
+          <div class="checkerboard-bg"></div>
+          
+          <canvas id="sticker-canvas" width="512" height="512"></canvas>
+
+          <!-- Interactive Layer Overlay for Touch Selection & Handles -->
+          <div id="layers-overlay" class="layers-overlay"></div>
+
+          <!-- Empty Canvas Placeholder -->
+          <div id="canvas-placeholder" class="canvas-placeholder">
+            <div class="placeholder-icon">📷</div>
+            <h3>Aucune image sélectionnée</h3>
+            <p>Importe une photo pour créer ton sticker avec détourage IA</p>
+            <label for="input-image-file" class="btn btn-primary">Choisir une image</label>
+            <button id="btn-load-sample" class="btn btn-secondary mt-2">Utiliser une photo d'exemple</button>
+          </div>
+
+          <!-- AI Segmenting Loader Overlay -->
+          <div id="ai-loader" class="ai-loader hidden">
+            <div class="spinner"></div>
+            <h3>Détourage IA MediaPipe...</h3>
+            <p>Extraction instantanée du sujet sans serveur</p>
+          </div>
+        </div>
+      </main>
+
+      <!-- Bottom Editor Toolbar -->
+      <div class="editor-toolbar" id="editor-toolbar">
+        <div class="toolbar-row-top">
+          <button id="btn-ai-segment" class="btn btn-ai">
+            <span>✨</span> <span id="ai-btn-text">Détourer IA</span>
+          </button>
+          <div class="toolbar-actions">
+            <button id="btn-open-text-dialog" class="btn-icon-tool" title="Ajouter Texte">T</button>
+            <button id="btn-open-deco-sheet" class="btn-icon-tool" title="Accessoires">🎉</button>
+            <button id="btn-undo" class="btn-icon-tool" title="Annuler">↩</button>
+            <button id="btn-redo" class="btn-icon-tool" title="Rétablir">↪</button>
+            <button id="btn-reset-transform" class="btn-icon-tool" title="Centrer">⟲</button>
+          </div>
+        </div>
+
+        <!-- Border Stroke Slider -->
+        <div class="toolbar-slider-group">
+          <div class="slider-header">
+            <span>Contour sticker (Die-Cut)</span>
+            <span id="border-size-label" class="color-accent">0 px</span>
+          </div>
+          <input type="range" id="border-size-slider" min="0" max="32" value="0" class="custom-slider">
+        </div>
+
+        <!-- Border Color Palette -->
+        <div class="color-palette" id="border-color-palette">
+          <div class="color-dot selected" data-color="#FFFFFF" style="background:#FFFFFF;"></div>
+          <div class="color-dot" data-color="#111111" style="background:#111111;"></div>
+          <div class="color-dot" data-color="#FEE140" style="background:#FEE140;"></div>
+          <div class="color-dot" data-color="#00F2FE" style="background:#00F2FE;"></div>
+          <div class="color-dot" data-color="#00F5A0" style="background:#00F5A0;"></div>
+          <div class="color-dot" data-color="#FF0844" style="background:#FF0844;"></div>
+          <div class="color-dot" data-color="#9B51E0" style="background:#9B51E0;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODAL 1: CREATE PACK DIALOG -->
+    <div id="modal-create-pack" class="modal-overlay hidden">
+      <div class="modal-card">
+        <h3>Nouveau Pack de Stickers</h3>
+        <div class="input-group">
+          <label>Nom du pack</label>
+          <input type="text" id="input-pack-name" placeholder="Ex: Mes Mèmes Préférés">
+        </div>
+        <div class="input-group">
+          <label>Auteur / Créateur</label>
+          <input type="text" id="input-pack-publisher" placeholder="Ex: Stickr Maker">
+        </div>
+        <div class="modal-buttons">
+          <button class="btn btn-secondary" id="btn-cancel-create-pack">Annuler</button>
+          <button class="btn btn-primary" id="btn-confirm-create-pack">Créer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 2: TEXT EDIT DIALOG (MEME / STICKER) -->
+    <div id="modal-text-edit" class="modal-overlay hidden">
+      <div class="modal-card modal-large">
+        <h3 id="text-dialog-title">Ajouter du texte stylisé</h3>
+        
+        <div class="input-group">
+          <input type="text" id="input-sticker-text" placeholder="Tape ton texte mème ici...">
+        </div>
+
+        <!-- Live Text Preview -->
+        <div class="text-preview-box">
+          <div class="text-preview-render" id="text-preview-render">STICKR MEME</div>
+        </div>
+
+        <!-- Font Choice Chips -->
+        <div class="section-title">Police d'écriture</div>
+        <div class="font-chips">
+          <button class="chip active" data-font="Impact">Impact</button>
+          <button class="chip" data-font="Sans-Serif">Sans-Serif</button>
+          <button class="chip" data-font="Serif">Serif</button>
+          <button class="chip" data-font="Monospace">Monospace</button>
+          <button class="chip" data-font="Pacifico">Cursive</button>
+        </div>
+
+        <!-- Fill Color -->
+        <div class="section-title">Couleur du texte (Remplissage)</div>
+        <div class="color-palette" id="text-fill-palette">
+          <div class="color-dot selected" data-color="#FFFFFF" style="background:#FFFFFF;"></div>
+          <div class="color-dot" data-color="#111111" style="background:#111111;"></div>
+          <div class="color-dot" data-color="#FEE140" style="background:#FEE140;"></div>
+          <div class="color-dot" data-color="#FF3366" style="background:#FF3366;"></div>
+          <div class="color-dot" data-color="#00F2FE" style="background:#00F2FE;"></div>
+          <div class="color-dot" data-color="#00F5A0" style="background:#00F5A0;"></div>
+          <div class="color-dot" data-color="#9B51E0" style="background:#9B51E0;"></div>
+        </div>
+
+        <!-- Stroke Color -->
+        <div class="section-title">Couleur du contour</div>
+        <div class="color-palette" id="text-stroke-palette">
+          <div class="color-dot selected" data-color="#000000" style="background:#000000;"></div>
+          <div class="color-dot" data-color="#FFFFFF" style="background:#FFFFFF;"></div>
+          <div class="color-dot" data-color="#333333" style="background:#333333;"></div>
+          <div class="color-dot" data-color="#8B0000" style="background:#8B0000;"></div>
+          <div class="color-dot" data-color="#003366" style="background:#003366;"></div>
+        </div>
+
+        <!-- Sliders -->
+        <div class="slider-row">
+          <label>Taille : <span id="label-font-size">42px</span></label>
+          <input type="range" id="slider-font-size" min="20" max="72" value="42" class="custom-slider">
+        </div>
+        <div class="slider-row">
+          <label>Contour : <span id="label-stroke-width">6px</span></label>
+          <input type="range" id="slider-stroke-width" min="0" max="16" value="6" class="custom-slider">
+        </div>
+
+        <div class="modal-buttons">
+          <button class="btn btn-secondary" id="btn-cancel-text-edit">Annuler</button>
+          <button class="btn btn-primary" id="btn-confirm-text-edit">Valider</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 3: DECORATION PICKER BOTTOM SHEET -->
+    <div id="sheet-decoration-picker" class="bottom-sheet-overlay hidden">
+      <div class="bottom-sheet">
+        <div class="drag-handle"></div>
+        <h3>Ajouter un accessoire</h3>
+        
+        <div class="category-tabs">
+          <button class="tab-btn active" data-cat="0">Accessoires</button>
+          <button class="tab-btn" data-cat="1">Mèmes</button>
+          <button class="tab-btn" data-cat="2">Émotions</button>
+          <button class="tab-btn" data-cat="3">Food</button>
+        </div>
+
+        <div class="emoji-grid" id="emoji-grid">
+          <!-- Emojis populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 4: WHATSAPP EXPORT SIMULATION MODAL -->
+    <div id="modal-whatsapp-export" class="modal-overlay hidden">
+      <div class="modal-card whatsapp-modal">
+        <div class="whatsapp-badge">WhatsApp Stickers IPC</div>
+        <h3 id="wa-pack-name">Nom du pack</h3>
+        <p id="wa-pack-publisher">Éditeur : ...</p>
+        <div class="wa-tray-preview">
+          <img id="wa-tray-img" alt="Tray icon 96x96">
+        </div>
+        <div class="wa-specs-list">
+          <div class="wa-spec-item">✓ <strong>Format :</strong> WebP 512x512 pixels</div>
+          <div class="wa-spec-item">✓ <strong>Poids :</strong> <span id="wa-total-size">< 100 Ko / sticker</span></div>
+          <div class="wa-spec-item">✓ <strong>Icône de plateau :</strong> 96x96 px PNG (< 50 Ko)</div>
+          <div class="wa-spec-item">✓ <strong>Sécurité :</strong> ContentProvider IPC conforme</div>
+        </div>
+        <div class="modal-buttons">
+          <button class="btn btn-secondary" id="btn-close-wa-modal">Fermer</button>
+          <button class="btn btn-whatsapp" id="btn-confirm-wa-export">Ajouter à WhatsApp ✓</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="toast hidden">Sticker enregistré avec succès !</div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
