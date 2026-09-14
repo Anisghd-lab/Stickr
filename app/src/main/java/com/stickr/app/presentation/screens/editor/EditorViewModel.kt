@@ -38,7 +38,7 @@ class EditorViewModel @Inject constructor(
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
 
     fun setSourceBitmap(bitmap: Bitmap) {
-        _uiState.update { it.copy(originalBitmap = bitmap, processedBitmap = bitmap) }
+        _uiState.update { it.copy(originalBitmap = bitmap, cutoutBitmap = null, processedBitmap = bitmap, hasBorder = false) }
     }
 
     /**
@@ -50,10 +50,21 @@ class EditorViewModel @Inject constructor(
             _uiState.update { it.copy(isSegmenting = true, errorMessage = null) }
             when (val result = segmentImageUseCase(currentBitmap)) {
                 is SegmentationResult.Success -> {
+                    val cutout = result.cutoutBitmap
+                    val finalBitmap = if (_uiState.value.hasBorder) {
+                        com.stickr.app.core.image.StickerBorderProcessor.addStickerBorder(
+                            source = cutout,
+                            borderSizePx = _uiState.value.borderWidth,
+                            borderColor = _uiState.value.borderColor
+                        )
+                    } else {
+                        cutout
+                    }
                     _uiState.update {
                         it.copy(
                             isSegmenting = false,
-                            processedBitmap = result.cutoutBitmap
+                            cutoutBitmap = cutout,
+                            processedBitmap = finalBitmap
                         )
                     }
                 }
@@ -71,8 +82,18 @@ class EditorViewModel @Inject constructor(
 
     fun toggleBorder() {
         val current = _uiState.value
+        val baseBitmap = current.cutoutBitmap ?: current.originalBitmap ?: return
         val newHasBorder = !current.hasBorder
-        _uiState.update { it.copy(hasBorder = newHasBorder) }
+        val newProcessed = if (newHasBorder) {
+            com.stickr.app.core.image.StickerBorderProcessor.addStickerBorder(
+                source = baseBitmap,
+                borderSizePx = current.borderWidth,
+                borderColor = current.borderColor
+            )
+        } else {
+            baseBitmap
+        }
+        _uiState.update { it.copy(hasBorder = newHasBorder, processedBitmap = newProcessed) }
     }
 
     fun setStickerText(text: String) {

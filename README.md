@@ -42,6 +42,11 @@ com.stickr.app/
 ├── StickrApp.kt               # Application Hilt (@HiltAndroidApp)
 ├── MainActivity.kt            # Activité racine (@AndroidEntryPoint)
 │
+├── core/image/                # Moteur Graphique & IA (Étape 2)
+│   ├── ImageSegmenterHelper.kt    # Inférence locale IA MediaPipe Tasks Vision
+│   ├── StickerBorderProcessor.kt  # Algorithme de contour die-cut (dilatation radiale)
+│   └── StickerExporter.kt         # Normalisation WebP 512x512 et compression WhatsApp <100 Ko
+│
 ├── di/                        # Modules Hilt (Dagger)
 │   ├── AppModule.kt           # Fournisseurs de Dispatchers et Contexte
 │   ├── DatabaseModule.kt      # Configuration Room & DAOs
@@ -58,8 +63,6 @@ com.stickr.app/
 │   │   ├── AppDatabase.kt     # Définition RoomDatabase
 │   │   ├── dao/               # StickerPackDao, StickerDao
 │   │   └── entity/            # StickerPackEntity, StickerEntity
-│   ├── mediapipe/
-│   │   └── ImageSegmentationHelper.kt # Traitement IA MediaPipe Tasks Vision
 │   └── repository/
 │       ├── StickerRepositoryImpl.kt
 │       └── ImageSegmentationRepositoryImpl.kt
@@ -75,36 +78,27 @@ com.stickr.app/
 
 ---
 
-## 📦 Configuration Gradle
+## 🎨 Moteur Graphique & IA (`core:image`)
 
-Le fichier [app/build.gradle.kts](file:///root/Stickr/app/build.gradle.kts) active les fonctionnalités demandées :
+### 1. `ImageSegmenterHelper` (IA Locale)
+- Exécute le modèle `selfie_segmenter.tflite` ou `deeplab_v3.tflite` via Google MediaPipe Tasks Vision.
+- Fonction : `suspend fun segmentSubject(inputBitmap: Bitmap): Result<Bitmap>`
+- Inférence asynchrone sur `Dispatchers.Default` produisant un Bitmap `ARGB_8888` transparent contenant uniquement le sujet extrait.
 
-```kotlin
-android {
-    namespace = "com.stickr.app"
-    compileSdk = 35
+### 2. `StickerBorderProcessor` (Contour Die-Cut)
+- Fonction : `fun addStickerBorder(source: Bitmap, borderSizePx: Float = 24f, @ColorInt borderColor: Int = Color.WHITE): Bitmap`
+- Algorithme par dilatation radiale multi-passes sur masque alpha (`extractAlpha()`) sans flou parasite, produisant un contour net façon autocollant vinyle.
 
-    defaultConfig {
-        applicationId = "com.stickr.app"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
-        ...
-    }
-
-    buildFeatures {
-        compose = true
-        viewBinding = true
-    }
-}
-```
+### 3. `StickerExporter` (Standard WhatsApp)
+- Fonction : `suspend fun prepareForWhatsApp(source: Bitmap): ByteArray`
+- Contraintes strictes respectées :
+  * Canvas exact de **512x512 pixels** avec fond transparent et marge de sécurité (16px).
+  * Encodage au format **WebP**.
+  * Boucle de réduction dynamique de la qualité assurant un poids strictement **inférieur à 100 Ko** (102 400 octets).
 
 ---
 
-## 🤖 Modèle IA MediaPipe (Détourage d'image)
+## 🤖 Modèles IA MediaPipe dans `app/src/main/assets/`
 
-Pour activer la segmentation locale dans l'émulateur ou sur appareil physique :
-1. Créez le dossier `app/src/main/assets/`.
-2. Téléchargez le modèle TensorFlow Lite de segmentation MediaPipe (ex: `selfie_segmenter.tflite`).
-3. Placez le fichier dans `app/src/main/assets/selfie_segmenter.tflite`.
+Le modèle officiel suivant est déjà inclus dans le dépôt :
+- [app/src/main/assets/selfie_segmenter.tflite](file:///root/Stickr/app/src/main/assets/selfie_segmenter.tflite) (~249 Ko) : Optimisé pour les portraits et découpes d'autocollants instantanées.

@@ -1,7 +1,7 @@
 package com.stickr.app.di
 
 import android.content.Context
-import com.stickr.app.data.mediapipe.ImageSegmentationHelper
+import com.stickr.app.core.image.ImageSegmenterHelper
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,9 +15,9 @@ object MediaPipeModule {
 
     @Provides
     @Singleton
-    fun provideImageSegmentationHelper(
+    fun provideImageSegmenterHelper(
         @ApplicationContext context: Context
-    ): ImageSegmentationHelper {
-        return ImageSegmentationHelper(context)
+    ): ImageSegmenterHelper {
+        return ImageSegmenterHelper(context)
     }
 }

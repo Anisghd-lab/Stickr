@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 data class EditorUiState(
     val packId: Long = 0,
     val originalBitmap: Bitmap? = null,
+    val cutoutBitmap: Bitmap? = null,
     val processedBitmap: Bitmap? = null,
     val isSegmenting: Boolean = false,
     val isSaving: Boolean = false,
