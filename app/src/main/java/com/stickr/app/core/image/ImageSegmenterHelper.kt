@@ -74,7 +74,8 @@ class ImageSegmenterHelper(
             val options = ImageSegmenterOptions.builder()
                 .setBaseOptions(baseOptions)
                 .setRunningMode(RunningMode.IMAGE)
-                .setOutputType(ImageSegmenterOptions.OutputType.CONFIDENCE_MASK)
+                .setOutputConfidenceMasks(true)
+                .setOutputCategoryMask(false)
                 .build()
 
             val instance = ImageSegmenter.createFromOptions(context, options)
